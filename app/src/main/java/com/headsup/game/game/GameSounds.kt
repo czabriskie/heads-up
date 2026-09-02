@@ -8,23 +8,35 @@ import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * Short synthesized cues for the two gestures: a rising two-note chime for
- * "correct" and a falling one for "pass". Generated in code so the app ships
- * no audio assets, and played as game audio without requesting focus so
- * Spotify keeps playing underneath.
+ * Short synthesized cues for the round. Generated in code so the app ships no
+ * audio assets, and played as game audio without requesting focus so Spotify
+ * keeps playing underneath.
+ *
+ *  - [playTick]     countdown "3, 2, 1"
+ *  - [playStart]    rising four-note fanfare when the round begins
+ *  - [playCorrect]  rising two-note chime on tilt down
+ *  - [playPass]     falling two-note tone on tilt up
+ *  - [playTimeUp]   three-note descending buzzer when the round ends
  */
-class GestureSounds {
+class GameSounds {
 
-    private val correct = buildTrack(listOf(Note(880f, 90), Note(1318f, 160)))   // A5 -> E6
-    private val pass = buildTrack(listOf(Note(392f, 110), Note(261f, 200)))      // G4 -> C4
+    private val tick = buildTrack(listOf(Note(1000f, 90)))
+    private val start = buildTrack(listOf(Note(523f, 90), Note(659f, 90), Note(784f, 90), Note(1047f, 260)))
+    private val correct = buildTrack(listOf(Note(880f, 90), Note(1318f, 160)))
+    private val pass = buildTrack(listOf(Note(392f, 110), Note(261f, 200)))
+    private val timeUp = buildTrack(
+        listOf(Note(220f, 220), Note(196f, 220), Note(165f, 520)),
+        harmonics = BUZZER_HARMONICS,
+    )
 
+    fun playTick() = replay(tick)
+    fun playStart() = replay(start)
     fun playCorrect() = replay(correct)
-
     fun playPass() = replay(pass)
+    fun playTimeUp() = replay(timeUp)
 
     fun release() {
-        correct.release()
-        pass.release()
+        listOf(tick, start, correct, pass, timeUp).forEach { it.release() }
     }
 
     private fun replay(track: AudioTrack) {
@@ -37,9 +49,14 @@ class GestureSounds {
 
     private data class Note(val hz: Float, val ms: Int)
 
-    private fun buildTrack(notes: List<Note>): AudioTrack {
+    /**
+     * @param harmonics relative amplitudes of the 1st, 2nd, 3rd... partials.
+     * A single 1f is a pure sine; adding overtones gives a reedier buzz.
+     */
+    private fun buildTrack(notes: List<Note>, harmonics: List<Float> = listOf(1f)): AudioTrack {
         val totalFrames = notes.sumOf { it.ms * SAMPLE_RATE / 1000 }
         val pcm = ShortArray(totalFrames)
+        val gain = AMPLITUDE / harmonics.sum()
         var offset = 0
         for (note in notes) {
             val frames = note.ms * SAMPLE_RATE / 1000
@@ -50,8 +67,11 @@ class GestureSounds {
                     i > frames - fade -> (frames - i).toFloat() / fade
                     else -> 1f
                 }
-                val sample = sin(2.0 * PI * note.hz * i / SAMPLE_RATE).toFloat()
-                pcm[offset + i] = (sample * envelope * AMPLITUDE * Short.MAX_VALUE).toInt().toShort()
+                var sample = 0.0
+                harmonics.forEachIndexed { k, amp ->
+                    sample += amp * sin(2.0 * PI * note.hz * (k + 1) * i / SAMPLE_RATE)
+                }
+                pcm[offset + i] = (sample * envelope * gain * Short.MAX_VALUE).toInt().toShort()
             }
             offset += frames
         }
@@ -79,5 +99,6 @@ class GestureSounds {
     private companion object {
         const val SAMPLE_RATE = 44_100
         const val AMPLITUDE = 0.6f
+        val BUZZER_HARMONICS = listOf(1f, 0.6f, 0.4f, 0.3f, 0.2f)
     }
 }
