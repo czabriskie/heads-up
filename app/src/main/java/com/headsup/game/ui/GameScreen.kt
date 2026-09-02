@@ -138,14 +138,31 @@ private fun ReadyContent(state: GameUiState.Ready, viewModel: GameViewModel, onE
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Switch(
+                checked = state.playSongs,
+                onCheckedChange = { viewModel.setPlaySongs(it) },
+            )
+            Text("Play songs through Spotify", style = MaterialTheme.typography.bodyLarge)
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Switch(
                 checked = state.startAtChorus,
+                enabled = state.playSongs,
                 onCheckedChange = { viewModel.setStartAtChorus(it) },
             )
-            Text("Start songs at the chorus", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                "Start songs at the chorus",
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (state.playSongs) Color.Unspecified else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         Spacer(Modifier.height(16.dp))
         Text(
-            "Make sure the Spotify app is open on this phone, then hold the phone " +
+            (if (state.playSongs) "Make sure the Spotify app is open on this phone, then hold the phone "
+            else "Songs won't play; your friends hum, sing, or describe them. Hold the phone ") +
                 "to your forehead, screen facing your friends.\n\n" +
                 "⬇️ Tilt down = correct   ⬆️ Tilt up = pass",
             style = MaterialTheme.typography.bodyMedium,

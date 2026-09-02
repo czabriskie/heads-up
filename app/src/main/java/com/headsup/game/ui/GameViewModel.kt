@@ -36,6 +36,7 @@ sealed interface GameUiState {
         val totalTracks: Int,
         val remainingInBag: Int,
         val roundSeconds: Int,
+        val playSongs: Boolean,
         val startAtChorus: Boolean,
     ) : GameUiState
 
@@ -68,6 +69,8 @@ class GameViewModel(
     private var tracksById: Map<String, Track> = emptyMap()
     private var bag: ShuffleBag? = null
     private var roundSeconds = 60
+    /** Whether to play each song through Spotify; off = title-and-artist only. */
+    private var playSongs = true
     private var startAtChorus = true
     private var timerJob: Job? = null
     private var flashJob: Job? = null
@@ -107,6 +110,7 @@ class GameViewModel(
                     totalTracks = newBag.totalCount,
                     remainingInBag = newBag.remainingCount,
                     roundSeconds = roundSeconds,
+                    playSongs = playSongs,
                     startAtChorus = startAtChorus,
                 )
                 prefetchUpcoming()
@@ -121,6 +125,12 @@ class GameViewModel(
         _state.update { if (it is GameUiState.Ready) it.copy(roundSeconds = seconds) else it }
     }
 
+    fun setPlaySongs(enabled: Boolean) {
+        playSongs = enabled
+        _state.update { if (it is GameUiState.Ready) it.copy(playSongs = enabled) else it }
+        if (enabled) prefetchUpcoming()
+    }
+
     fun setStartAtChorus(enabled: Boolean) {
         startAtChorus = enabled
         _state.update { if (it is GameUiState.Ready) it.copy(startAtChorus = enabled) else it }
@@ -129,7 +139,7 @@ class GameViewModel(
 
     /** Warms the chorus-position cache for the next track so playback starts instantly. */
     private fun prefetchUpcoming() {
-        if (!startAtChorus) return
+        if (!playSongs || !startAtChorus) return
         val upNextId = bag?.peek() ?: return
         val upNext = tracksById[upNextId] ?: return
         viewModelScope.launch { chorusFinder.prefetch(upNext) }
@@ -206,6 +216,7 @@ class GameViewModel(
             flash = previous?.flash,
         )
 
+        if (!playSongs) return
         val startMs = if (startAtChorus) chorusFinder.startPositionMs(track) else 0L
         prefetchUpcoming()
         when (val result = player.play(track.uri, positionMs = startMs)) {
@@ -225,7 +236,7 @@ class GameViewModel(
 
     private fun finishGame() {
         timerJob?.cancel()
-        viewModelScope.launch { player.pause() }
+        if (playSongs) viewModelScope.launch { player.pause() }
         _state.value = GameUiState.Finished(results.toList())
     }
 
@@ -240,6 +251,7 @@ class GameViewModel(
             totalTracks = currentBag.totalCount,
             remainingInBag = currentBag.remainingCount,
             roundSeconds = roundSeconds,
+            playSongs = playSongs,
             startAtChorus = startAtChorus,
         )
         prefetchUpcoming()

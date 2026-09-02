@@ -9,7 +9,8 @@ An Android party game (Kotlin, Jetpack Compose, single module) that plays Heads 
 Two signature features:
 
 1. **True no-repeat shuffle** — each playlist is a persistent "shuffle bag": every song is drawn exactly once, in random order, before any repeat. State survives app restarts (DataStore, per playlist). Playlist edits are merged into the current cycle. Manual "Reset shuffle" available.
-2. **Start at the chorus** — songs start at their most recognizable part: the loudest audio-analysis section in the 15–65% window of the track, falling back to 30%-in when analysis is unavailable. Positions are cached and prefetched one track ahead. Toggleable on the setup screen (default on).
+2. **Optional playback** — a "Play songs through Spotify" switch on the setup screen (default on). Off = title/artist only, no Spotify calls during the round, so friends hum or describe the song instead; the chorus switch is disabled while it's off.
+3. **Start at the chorus** — songs start at their most recognizable part: the loudest audio-analysis section in the 15–65% window of the track, falling back to 30%-in when analysis is unavailable. Positions are cached and prefetched one track ahead. Toggleable on the setup screen (default on).
 
 ## Current status
 
@@ -46,6 +47,7 @@ Two signature features:
 - **Debug HTTP logging.** Debug builds log request lines and non-2xx bodies under logcat tags `okhttp.OkHttpClient` and `SpotifyApi` (no headers, so no bearer token). Release builds log nothing.
 - **Audio-analysis deprecation.** Spotify returns 403 on `/v1/audio-analysis` for apps created after Nov 2024. `ChorusFinder` treats any failure as "use the 30% heuristic" and only persists analysis-derived positions, so transient failures don't stick. Expect the heuristic path on a fresh client ID.
 - **Tilt thresholds** (`TiltDetector`: trigger |z| > 7, re-arm |z| < 4, low-pass α = 0.35) worked in a first S23 round but haven't been tuned. The filter is seeded from the first sensor sample; starting it at 0 caused a spurious gesture at round start.
+- **App icon** is a hand-drawn vector adaptive icon (`res/drawable/ic_launcher_foreground.xml`: white eighth note + green question mark on GameBlue). No raster mipmaps; minSdk 26 so adaptive-only is fine.
 - Debug-only build config; no minification, signing, or CI set up.
 
 ## Sensible next steps
