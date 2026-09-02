@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -84,7 +85,7 @@ fun GameScreen(
             CircularProgressIndicator()
         }
         is GameUiState.Error -> Column(
-            Modifier.fillMaxSize().padding(32.dp),
+            Modifier.fillMaxSize().safeDrawingPadding().padding(32.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -96,7 +97,7 @@ fun GameScreen(
         is GameUiState.Countdown -> {
             GameModeEffects()
             Box(
-                Modifier.fillMaxSize().background(GameBlue),
+                Modifier.fillMaxSize().background(GameBlue).safeDrawingPadding(),
                 contentAlignment = Alignment.Center,
             ) {
                 Text("${s.secondsLeft}", fontSize = 160.sp, color = Color.White, fontWeight = FontWeight.Bold)
@@ -128,7 +129,7 @@ private fun GameModeEffects() {
 @Composable
 private fun ReadyContent(state: GameUiState.Ready, viewModel: GameViewModel, onExit: () -> Unit) {
     Column(
-        Modifier.fillMaxSize().padding(24.dp),
+        Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -230,7 +231,7 @@ private fun PlayingContent(state: GameUiState.Playing, viewModel: GameViewModel,
         label = "gameBackground",
     )
 
-    Box(Modifier.fillMaxSize().background(background)) {
+    Box(Modifier.fillMaxSize().background(background).safeDrawingPadding()) {
         Row(
             Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -286,7 +287,7 @@ private fun PlayingContent(state: GameUiState.Playing, viewModel: GameViewModel,
 @Composable
 private fun ResultsContent(state: GameUiState.Finished, viewModel: GameViewModel, onExit: () -> Unit) {
     val correct = state.results.count { it.correct }
-    Column(Modifier.fillMaxSize().padding(24.dp)) {
+    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp)) {
         Text("Time's up! 🎉", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(4.dp))
         Text(
