@@ -25,11 +25,27 @@ data class PlaylistTracksRef(
 )
 
 @Serializable
+data class PlaylistOwner(
+    val id: String? = null,
+)
+
+@Serializable
 data class SimplePlaylist(
     val id: String,
     val name: String,
     val images: List<SpotifyImage>? = null,
     val tracks: PlaylistTracksRef? = null,
+    val owner: PlaylistOwner? = null,
+    val collaborative: Boolean = false,
+) {
+    /** Spotify only serves playlist items to the owner or collaborators (2026 API). */
+    fun isReadableBy(userId: String?): Boolean =
+        collaborative || (userId != null && owner?.id == userId)
+}
+
+@Serializable
+data class UserProfile(
+    val id: String,
 )
 
 @Serializable

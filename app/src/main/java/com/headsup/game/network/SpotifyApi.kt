@@ -6,6 +6,7 @@ import com.headsup.game.model.PlayRequest
 import com.headsup.game.model.PlaylistPage
 import com.headsup.game.model.TokenResponse
 import com.headsup.game.model.TrackPage
+import com.headsup.game.model.UserProfile
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.Field
@@ -40,6 +41,10 @@ interface SpotifyAccountsApi {
 
 /** https://api.spotify.com — playlists, tracks, and Connect playback control. */
 interface SpotifyApi {
+
+    /** Current user's profile; `id` is returned without any extra scope. */
+    @GET("v1/me")
+    suspend fun getMe(): UserProfile
 
     @GET("v1/me/playlists")
     suspend fun getMyPlaylists(

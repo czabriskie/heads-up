@@ -75,11 +75,27 @@ fun PlaylistScreen(
             }
             is PlaylistUiState.Loaded -> {
                 if (s.playlists.isEmpty()) {
-                    Text("You have no playlists yet — create one in Spotify first.")
+                    Text(
+                        if (s.hiddenCount > 0)
+                            "None of your playlists can be used: Spotify only lets this app read " +
+                                "playlists you created or collaborate on. Make one in Spotify first."
+                        else "You have no playlists yet — create one in Spotify first."
+                    )
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(s.playlists, key = { it.id }) { playlist ->
                             PlaylistRow(playlist) { onPlaylistSelected(playlist) }
+                        }
+                        if (s.hiddenCount > 0) {
+                            item(key = "hidden-note") {
+                                Text(
+                                    "${s.hiddenCount} followed playlist${if (s.hiddenCount == 1) "" else "s"} hidden: " +
+                                        "Spotify only lets this app read playlists you created or collaborate on.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 8.dp),
+                                )
+                            }
                         }
                     }
                 }
