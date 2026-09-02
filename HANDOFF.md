@@ -1,6 +1,6 @@
 # Project Handoff — Heads Up: Music
 
-_Last updated: 2026-09-02_
+_Last updated: 2026-09-02 (device-tested)_
 
 ## What this is
 
@@ -18,8 +18,8 @@ Two signature features:
 | Full app code (auth → playlists → game → results) | ✅ Written |
 | Compiles / debug APK assembles | ✅ Verified (Gradle 8.9, AGP 8.5.2, Kotlin 2.0.20, JDK 17+) |
 | Unit tests (`ShuffleBagTest`, `ChorusLocatorTest`, 14 tests) | ✅ Passing (`./gradlew :app:testDebugUnitTest`) |
-| Run on a real device | ❌ **Not yet done** — no device testing has happened at all |
-| Spotify client ID | ❌ Not configured (see below; app shows a setup message until it is) |
+| Run on a real device | ✅ Galaxy S23 (SM-S911U): sign-in, playlist load, Spotify Connect playback, round loop all verified |
+| Spotify client ID | ✅ Configured locally in `local.properties` (never committed) |
 
 ## To get it running
 
@@ -42,13 +42,15 @@ Two signature features:
 ## Key decisions & constraints
 
 - **Web API + Spotify Connect, not the App Remote SDK.** Keeps the repo free of Spotify's binary AAR (not on Maven Central) and the auth simple. Cost: requires Premium and an awake Spotify app as the Connect device. If playback proves flaky in device testing, the fallback plan is Spotify's App Remote SDK (vendored AAR).
+- **Playlist items endpoint (2026 API changes).** `/v1/playlists/{id}/tracks` now returns 403; the app uses `/v1/playlists/{id}/items` (entries under `item`, `is_local` on the wrapper, `limit` max 50). Spotify only serves items for playlists the user owns or collaborates on, so followed/editorial playlists will still 403 — the error message says so.
+- **Debug HTTP logging.** Debug builds log request lines and non-2xx bodies under logcat tags `okhttp.OkHttpClient` and `SpotifyApi` (no headers, so no bearer token). Release builds log nothing.
 - **Audio-analysis deprecation.** Spotify returns 403 on `/v1/audio-analysis` for apps created after Nov 2024. `ChorusFinder` treats any failure as "use the 30% heuristic" and only persists analysis-derived positions, so transient failures don't stick. Expect the heuristic path on a fresh client ID.
-- **Tilt thresholds** (`TiltDetector`: trigger |z| > 7, re-arm |z| < 4, low-pass α = 0.35) are untested on hardware and may need tuning.
+- **Tilt thresholds** (`TiltDetector`: trigger |z| > 7, re-arm |z| < 4, low-pass α = 0.35) worked in a first S23 round but haven't been tuned. The filter is seeded from the first sensor sample; starting it at 0 caused a spurious gesture at round start.
 - Debug-only build config; no minification, signing, or CI set up.
 
 ## Sensible next steps
 
-1. Device test: auth round-trip, playback, tilt feel, the no-device hint flow.
+1. More device time: tilt feel across several rounds, the no-device hint flow, and behaviour when Spotify is backgrounded.
 2. Tune tilt thresholds / flash duration (600ms) from real play.
 3. Maybe: team scores across rounds, haptics on gesture, countdown beeps, a "song was already guessed this round" guard if rounds outlast playlists.
 4. CI (GitHub Actions: `./gradlew testDebugUnitTest assembleDebug`) and a release signing config if this goes beyond personal use.

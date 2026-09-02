@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.headsup.game.AppContainer
 import com.headsup.game.model.SimplePlaylist
 import com.headsup.game.network.SpotifyApi
+import com.headsup.game.network.describeError
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -39,7 +40,7 @@ class PlaylistViewModel(private val api: SpotifyApi) : ViewModel() {
                 }
                 _state.value = PlaylistUiState.Loaded(playlists)
             } catch (e: Exception) {
-                _state.value = PlaylistUiState.Error("Couldn't load playlists: ${e.message}")
+                _state.value = PlaylistUiState.Error("Couldn't load playlists: ${describeError(e)}")
             }
         }
     }

@@ -30,6 +30,7 @@ class TiltDetector(
 
     private var armed = false
     private var filteredZ = 0f
+    private var hasSample = false
 
     private companion object {
         const val TRIGGER_THRESHOLD = 7f
@@ -40,6 +41,7 @@ class TiltDetector(
     fun start() {
         armed = false
         filteredZ = 0f
+        hasSample = false
         sensor?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
         }
@@ -50,7 +52,16 @@ class TiltDetector(
     }
 
     override fun onSensorChanged(event: SensorEvent) {
-        filteredZ += LOW_PASS_ALPHA * (event.values[2] - filteredZ)
+        val z = event.values[2]
+        if (!hasSample) {
+            // Seed the filter with the real orientation. Starting from 0 would make
+            // the first sample look "neutral" and arm the detector even when the
+            // phone is lying flat, firing a spurious gesture as the filter caught up.
+            filteredZ = z
+            hasSample = true
+        } else {
+            filteredZ += LOW_PASS_ALPHA * (z - filteredZ)
+        }
         if (!armed) {
             // Wait for the phone to be held roughly vertical before accepting a gesture.
             if (kotlin.math.abs(filteredZ) < NEUTRAL_THRESHOLD) armed = true

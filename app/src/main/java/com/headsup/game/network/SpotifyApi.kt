@@ -47,13 +47,20 @@ interface SpotifyApi {
         @Query("offset") offset: Int = 0,
     ): PlaylistPage
 
-    @GET("v1/playlists/{id}/tracks")
+    /**
+     * Get Playlist Items. Replaces the deprecated `/playlists/{id}/tracks`
+     * endpoint (2026 Web API changes): entries are under `item`, `is_local`
+     * moved to the wrapper, and `limit` is capped at 50. Spotify only serves
+     * this for playlists the user owns or collaborates on; anything else 403s.
+     */
+    @GET("v1/playlists/{id}/items")
     suspend fun getPlaylistTracks(
         @Path("id") playlistId: String,
-        @Query("limit") limit: Int = 100,
+        @Query("limit") limit: Int = 50,
         @Query("offset") offset: Int = 0,
+        @Query("additional_types") additionalTypes: String = "track",
         @Query("fields") fields: String =
-            "items(track(id,name,uri,is_local,duration_ms,artists(name))),next,total",
+            "items(is_local,item(id,type,name,uri,duration_ms,artists(name))),next,total",
     ): TrackPage
 
     /**

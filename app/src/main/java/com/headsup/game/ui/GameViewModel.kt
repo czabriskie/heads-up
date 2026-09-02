@@ -8,6 +8,7 @@ import com.headsup.game.game.ShuffleBag
 import com.headsup.game.game.ShuffleBagStore
 import com.headsup.game.model.Track
 import com.headsup.game.network.SpotifyApi
+import com.headsup.game.network.describeError
 import com.headsup.game.player.ChorusFinder
 import com.headsup.game.player.SpotifyPlayer
 import kotlinx.coroutines.Job
@@ -83,9 +84,8 @@ class GameViewModel(
                 val tracks = mutableListOf<Track>()
                 var offset = 0
                 while (true) {
-                    val page = api.getPlaylistTracks(playlistId, limit = 100, offset = offset)
-                    tracks += page.items.mapNotNull { it.track }
-                        .filter { it.id != null && !it.isLocal }
+                    val page = api.getPlaylistTracks(playlistId, limit = 50, offset = offset)
+                    tracks += page.items.mapNotNull { it.playableTrack }
                     if (page.next == null || page.items.isEmpty()) break
                     offset += page.items.size
                 }
@@ -111,7 +111,7 @@ class GameViewModel(
                 )
                 prefetchUpcoming()
             } catch (e: Exception) {
-                _state.value = GameUiState.Error("Couldn't load playlist: ${e.message}")
+                _state.value = GameUiState.Error("Couldn't load playlist: ${describeError(e)}")
             }
         }
     }

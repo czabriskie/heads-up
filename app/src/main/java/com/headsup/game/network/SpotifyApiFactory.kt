@@ -1,11 +1,13 @@
 package com.headsup.game.network
 
+import com.headsup.game.BuildConfig
 import com.headsup.game.auth.SpotifyAuthManager
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
@@ -41,6 +43,14 @@ object SpotifyApiFactory {
         }
         val client = OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
+            .apply {
+                if (BuildConfig.DEBUG) {
+                    // Logs request lines and response bodies (tag "okhttp.OkHttpClient").
+                    // Headers are skipped so the bearer token never lands in logcat.
+                    addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BASIC))
+                    addInterceptor(SpotifyErrorBodyLogger)
+                }
+            }
             .build()
         return Retrofit.Builder()
             .baseUrl("https://api.spotify.com/")
