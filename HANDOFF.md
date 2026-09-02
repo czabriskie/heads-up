@@ -47,7 +47,7 @@ Two signature features:
 - **Debug HTTP logging.** Debug builds log request lines and non-2xx bodies under logcat tags `okhttp.OkHttpClient` and `SpotifyApi` (no headers, so no bearer token). Release builds log nothing.
 - **Audio-analysis deprecation.** Spotify returns 403 on `/v1/audio-analysis` for apps created after Nov 2024. `ChorusFinder` treats any failure as "use the 30% heuristic" and only persists analysis-derived positions, so transient failures don't stick. Expect the heuristic path on a fresh client ID.
 - **Tilt thresholds** (`TiltDetector`: trigger |z| > 7, re-arm |z| < 4, low-pass α = 0.35) worked in a first S23 round but haven't been tuned. The filter is seeded from the first sensor sample; starting it at 0 caused a spurious gesture at round start.
-- **Gesture sounds** (`game/GestureSounds.kt`) are synthesized sine chimes played via `AudioTrack` as `USAGE_GAME` without audio focus, so they layer over Spotify instead of pausing it. Rising A5→E6 = correct, falling G4→C4 = pass.
+- **Sounds** (`game/GameSounds.kt`) are synthesized via `AudioTrack` as `USAGE_GAME` without audio focus, so they layer over Spotify instead of pausing it. Tick on each countdown second, C-major fanfare on start, rising A5→E6 = correct, falling G4→C4 = pass, three-note descending buzzer (with overtones) when the round ends. Triggered from `GameScreen` on state transitions.
 - **App icon** is a hand-drawn vector adaptive icon (`res/drawable/ic_launcher_foreground.xml`: white eighth note + green question mark on GameBlue). No raster mipmaps; minSdk 26 so adaptive-only is fine.
 - Debug-only build config; no minification, signing, or CI set up.
 
@@ -55,7 +55,7 @@ Two signature features:
 
 1. More device time: tilt feel across several rounds, the no-device hint flow, and behaviour when Spotify is backgrounded.
 2. Tune tilt thresholds / flash duration (600ms) from real play.
-3. Maybe: team scores across rounds, haptics on gesture, countdown beeps, a sound on/off switch, a "song was already guessed this round" guard if rounds outlast playlists.
+3. Maybe: team scores across rounds, haptics on gesture, countdown beeps, a sound on/off switch, a last-5-seconds tick, a "song was already guessed this round" guard if rounds outlast playlists.
 4. CI (GitHub Actions: `./gradlew testDebugUnitTest assembleDebug`) and a release signing config if this goes beyond personal use.
 
 ## Repo state

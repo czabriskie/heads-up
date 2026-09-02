@@ -27,6 +27,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
@@ -40,7 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.headsup.game.AppContainer
-import com.headsup.game.game.GestureSounds
+import com.headsup.game.game.GameSounds
 import com.headsup.game.game.TiltDetector
 
 private val CorrectGreen = Color(0xFF1DB954)
@@ -59,6 +63,21 @@ fun GameScreen(
         factory = GameViewModel.Factory(container, playlistId, playlistName),
     )
     val state by viewModel.state.collectAsState()
+
+    val sounds = remember { GameSounds() }
+    DisposableEffect(Unit) { onDispose { sounds.release() } }
+
+    // Audible cues on state transitions: countdown ticks, round start, round over.
+    var previousState by remember { mutableStateOf<GameUiState?>(null) }
+    LaunchedEffect(state) {
+        val previous = previousState
+        previousState = state
+        when {
+            state is GameUiState.Countdown -> sounds.playTick()
+            state is GameUiState.Playing && previous is GameUiState.Countdown -> sounds.playStart()
+            state is GameUiState.Finished && previous is GameUiState.Playing -> sounds.playTimeUp()
+        }
+    }
 
     when (val s = state) {
         is GameUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -85,7 +104,7 @@ fun GameScreen(
         }
         is GameUiState.Playing -> {
             GameModeEffects()
-            PlayingContent(s, viewModel)
+            PlayingContent(s, viewModel, sounds)
         }
         is GameUiState.Finished -> ResultsContent(s, viewModel, onExit)
     }
@@ -182,12 +201,11 @@ private fun ReadyContent(state: GameUiState.Ready, viewModel: GameViewModel, onE
 }
 
 @Composable
-private fun PlayingContent(state: GameUiState.Playing, viewModel: GameViewModel) {
+private fun PlayingContent(state: GameUiState.Playing, viewModel: GameViewModel, sounds: GameSounds) {
     val context = LocalContext.current
     val currentViewModel by rememberUpdatedState(viewModel)
 
     DisposableEffect(Unit) {
-        val sounds = GestureSounds()
         val detector = TiltDetector(
             context = context,
             onTiltDown = {
@@ -200,10 +218,7 @@ private fun PlayingContent(state: GameUiState.Playing, viewModel: GameViewModel)
             },
         )
         detector.start()
-        onDispose {
-            detector.stop()
-            sounds.release()
-        }
+        onDispose { detector.stop() }
     }
 
     val background by animateColorAsState(

@@ -12,7 +12,7 @@ A Heads Up–style party game for Android, written in Kotlin with Jetpack Compos
 | **Start at the chorus** | Songs start at their most recognizable part instead of the intro (toggle on the setup screen). |
 | **True no-repeat shuffle** | Every song in a playlist is drawn once, in random order, before any repeat. Progress is saved per playlist across rounds and app restarts. |
 | **Tilt gestures** | Tilt the phone down for correct, up for pass. One gesture per tilt; the phone must return to your forehead in between. |
-| **Sound cues** | A rising chime on correct and a falling tone on pass, layered over the music. |
+| **Sound cues** | Countdown ticks, a start fanfare, a rising chime on correct, a falling tone on pass, and a buzzer when time runs out, all layered over the music. |
 | **Round timer and scoreboard** | 60, 90, or 120 second rounds, then a results screen listing every song and how you did. |
 | **Reset shuffle** | Start a fresh no-repeat cycle for a playlist on demand. |
 
@@ -118,7 +118,7 @@ Single-module Compose app, MVVM, no DI framework.
 | Web API client | `network/`, `model/` | Retrofit + kotlinx.serialization: profile, playlists, playlist items, Connect playback. Debug builds log requests to logcat (tags `okhttp.OkHttpClient`, `SpotifyApi`). |
 | No-repeat shuffle | `game/ShuffleBag.kt`, `ShuffleBagStore.kt` | The persistent shuffle bag |
 | Tilt gestures | `game/TiltGestureFilter.kt`, `TiltDetector.kt` | Pure gesture state machine plus the gravity-sensor wrapper |
-| Sound cues | `game/GestureSounds.kt` | Synthesized chimes played as game audio without taking audio focus |
+| Sound cues | `game/GameSounds.kt` | Synthesized cues (tick, start, correct, pass, time up) played as game audio without taking audio focus |
 | Chorus finder | `player/ChorusLocator.kt`, `ChorusFinder.kt` | Section picking logic plus analysis fetch, cache, and prefetch |
 | Playback | `player/SpotifyPlayer.kt` | Plays each drawn track on the phone's Spotify app, pauses at round end |
 | UI | `ui/` | Login → playlist picker → game (setup / countdown / play / results) |
