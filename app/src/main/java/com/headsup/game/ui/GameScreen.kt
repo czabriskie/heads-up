@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.headsup.game.AppContainer
+import com.headsup.game.game.GestureSounds
 import com.headsup.game.game.TiltDetector
 
 private val CorrectGreen = Color(0xFF1DB954)
@@ -186,13 +187,23 @@ private fun PlayingContent(state: GameUiState.Playing, viewModel: GameViewModel)
     val currentViewModel by rememberUpdatedState(viewModel)
 
     DisposableEffect(Unit) {
+        val sounds = GestureSounds()
         val detector = TiltDetector(
             context = context,
-            onTiltDown = { currentViewModel.onCorrect() },
-            onTiltUp = { currentViewModel.onPass() },
+            onTiltDown = {
+                sounds.playCorrect()
+                currentViewModel.onCorrect()
+            },
+            onTiltUp = {
+                sounds.playPass()
+                currentViewModel.onPass()
+            },
         )
         detector.start()
-        onDispose { detector.stop() }
+        onDispose {
+            detector.stop()
+            sounds.release()
+        }
     }
 
     val background by animateColorAsState(
