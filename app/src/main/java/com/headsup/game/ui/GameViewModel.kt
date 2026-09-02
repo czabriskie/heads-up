@@ -102,6 +102,7 @@ class GameViewModel(
                     allTrackIds = tracks.map { it.id!! },
                     persistedRemaining = persisted?.remaining,
                     persistedAll = persisted?.all,
+                    persistedLastDrawn = persisted?.lastDrawn,
                 )
                 bag = newBag
                 bagStore.save(playlistId, newBag)

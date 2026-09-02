@@ -8,7 +8,7 @@ An Android party game (Kotlin, Jetpack Compose, single module) that plays Heads 
 
 Two signature features:
 
-1. **True no-repeat shuffle** — each playlist is a persistent "shuffle bag": every song is drawn exactly once, in random order, before any repeat. State survives app restarts (DataStore, per playlist). Playlist edits are merged into the current cycle. Manual "Reset shuffle" available.
+1. **True no-repeat shuffle** — each playlist is a persistent "shuffle bag": every song is drawn exactly once, in random order, before any repeat. State survives app restarts (DataStore, per playlist). Playlist edits are merged into the current cycle. When the bag refills, the new cycle never starts with the song just played (last draw is persisted too). Bags are per playlist by design; the same song can appear from two playlists that share it. Manual "Reset shuffle" available.
 2. **Optional playback** — a "Play songs through Spotify" switch on the setup screen (default on). Off = title/artist only, no Spotify calls during the round, so friends hum or describe the song instead; the chorus switch is disabled while it's off.
 3. **Start at the chorus** — songs start at their most recognizable part: the loudest audio-analysis section in the 15–65% window of the track, falling back to 30%-in when analysis is unavailable. Positions are cached and prefetched one track ahead. Toggleable on the setup screen (default on).
 

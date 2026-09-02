@@ -15,10 +15,14 @@ class ShuffleBag(
     allTrackIds: List<String>,
     persistedRemaining: List<String>? = null,
     persistedAll: List<String>? = null,
+    persistedLastDrawn: String? = null,
     private val random: Random = Random.Default,
 ) {
     private val all: List<String> = allTrackIds.distinct()
     private val remaining: ArrayDeque<String>
+
+    /** Most recently drawn track, so a refill never starts with the song just played. */
+    private var lastDrawn: String? = persistedLastDrawn
 
     init {
         val allSet = all.toSet()
@@ -46,10 +50,18 @@ class ShuffleBag(
     /** Draws the next track ID, refilling and reshuffling when the bag is empty. */
     fun draw(): String? {
         if (all.isEmpty()) return null
-        if (remaining.isEmpty()) {
-            remaining.addAll(all.shuffled(random))
+        if (remaining.isEmpty()) refill()
+        return remaining.removeFirst().also { lastDrawn = it }
+    }
+
+    private fun refill() {
+        val order = all.shuffled(random).toMutableList()
+        // Avoid a back-to-back repeat across the cycle boundary.
+        if (order.size > 1 && order.first() == lastDrawn) {
+            val swapWith = 1 + random.nextInt(order.size - 1)
+            order[0] = order[swapWith].also { order[swapWith] = order[0] }
         }
-        return remaining.removeFirst()
+        remaining.addAll(order)
     }
 
     /**
@@ -60,4 +72,5 @@ class ShuffleBag(
 
     fun snapshotRemaining(): List<String> = remaining.toList()
     fun snapshotAll(): List<String> = all
+    fun snapshotLastDrawn(): String? = lastDrawn
 }

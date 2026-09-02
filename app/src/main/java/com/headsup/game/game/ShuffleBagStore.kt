@@ -17,6 +17,7 @@ private val Context.shuffleDataStore: DataStore<Preferences> by preferencesDataS
 data class PersistedBag(
     val all: List<String> = emptyList(),
     val remaining: List<String> = emptyList(),
+    val lastDrawn: String? = null,
 )
 
 /** Persists each playlist's shuffle-bag state so no-repeat survives app restarts. */
@@ -36,7 +37,11 @@ class ShuffleBagStore(private val context: Context) {
     }
 
     suspend fun save(playlistId: String, bag: ShuffleBag) {
-        val persisted = PersistedBag(all = bag.snapshotAll(), remaining = bag.snapshotRemaining())
+        val persisted = PersistedBag(
+            all = bag.snapshotAll(),
+            remaining = bag.snapshotRemaining(),
+            lastDrawn = bag.snapshotLastDrawn(),
+        )
         context.shuffleDataStore.edit { prefs ->
             prefs[keyFor(playlistId)] = json.encodeToString(persisted)
         }
