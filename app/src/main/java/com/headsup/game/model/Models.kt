@@ -25,11 +25,27 @@ data class PlaylistTracksRef(
 )
 
 @Serializable
+data class PlaylistOwner(
+    val id: String? = null,
+)
+
+@Serializable
 data class SimplePlaylist(
     val id: String,
     val name: String,
     val images: List<SpotifyImage>? = null,
     val tracks: PlaylistTracksRef? = null,
+    val owner: PlaylistOwner? = null,
+    val collaborative: Boolean = false,
+) {
+    /** Spotify only serves playlist items to the owner or collaborators (2026 API). */
+    fun isReadableBy(userId: String?): Boolean =
+        collaborative || (userId != null && owner?.id == userId)
+}
+
+@Serializable
+data class UserProfile(
+    val id: String,
 )
 
 @Serializable
@@ -49,6 +65,7 @@ data class Track(
     val id: String? = null,
     val name: String,
     val uri: String,
+    val type: String = "track",
     val artists: List<Artist> = emptyList(),
     @SerialName("is_local") val isLocal: Boolean = false,
     @SerialName("duration_ms") val durationMs: Long = 0,
@@ -56,10 +73,17 @@ data class Track(
     val artistNames: String get() = artists.joinToString(", ") { it.name }
 }
 
+/** One entry of a playlist. `item` is the current field; `track` is the pre-2026 name. */
 @Serializable
 data class PlaylistTrackItem(
+    val item: Track? = null,
     val track: Track? = null,
-)
+    @SerialName("is_local") val isLocal: Boolean = false,
+) {
+    /** The playable Spotify track, or null for local files, episodes, and removed tracks. */
+    val playableTrack: Track?
+        get() = (item ?: track)?.takeIf { it.id != null && it.type == "track" && !it.isLocal && !isLocal }
+}
 
 @Serializable
 data class TrackPage(
@@ -79,6 +103,18 @@ data class Device(
 @Serializable
 data class DevicesResponse(
     val devices: List<Device> = emptyList(),
+)
+
+@Serializable
+data class AudioSection(
+    val start: Double = 0.0,
+    val duration: Double = 0.0,
+    val loudness: Double = 0.0,
+)
+
+@Serializable
+data class AudioAnalysis(
+    val sections: List<AudioSection> = emptyList(),
 )
 
 @Serializable

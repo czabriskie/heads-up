@@ -6,13 +6,18 @@ import androidx.lifecycle.viewModelScope
 import com.headsup.game.AppContainer
 import com.headsup.game.model.SimplePlaylist
 import com.headsup.game.network.SpotifyApi
+import com.headsup.game.network.describeError
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 sealed interface PlaylistUiState {
     data object Loading : PlaylistUiState
-    data class Loaded(val playlists: List<SimplePlaylist>) : PlaylistUiState
+    data class Loaded(
+        val playlists: List<SimplePlaylist>,
+        /** Followed playlists dropped because Spotify won't serve their tracks to this app. */
+        val hiddenCount: Int = 0,
+    ) : PlaylistUiState
     data class Error(val message: String) : PlaylistUiState
 }
 
@@ -29,6 +34,7 @@ class PlaylistViewModel(private val api: SpotifyApi) : ViewModel() {
         _state.value = PlaylistUiState.Loading
         viewModelScope.launch {
             try {
+                val userId = api.getMe().id
                 val playlists = mutableListOf<SimplePlaylist>()
                 var offset = 0
                 while (true) {
@@ -37,9 +43,13 @@ class PlaylistViewModel(private val api: SpotifyApi) : ViewModel() {
                     if (page.next == null || page.items.isEmpty()) break
                     offset += page.items.size
                 }
-                _state.value = PlaylistUiState.Loaded(playlists)
+                val readable = playlists.filter { it.isReadableBy(userId) }
+                _state.value = PlaylistUiState.Loaded(
+                    playlists = readable,
+                    hiddenCount = playlists.size - readable.size,
+                )
             } catch (e: Exception) {
-                _state.value = PlaylistUiState.Error("Couldn't load playlists: ${e.message}")
+                _state.value = PlaylistUiState.Error("Couldn't load playlists: ${describeError(e)}")
             }
         }
     }

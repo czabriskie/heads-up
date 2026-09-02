@@ -6,6 +6,7 @@ import com.headsup.game.auth.TokenStore
 import com.headsup.game.game.ShuffleBagStore
 import com.headsup.game.network.SpotifyApi
 import com.headsup.game.network.SpotifyApiFactory
+import com.headsup.game.player.ChorusFinder
 import com.headsup.game.player.SpotifyPlayer
 
 /** Hand-rolled singleton graph — small enough that a DI framework isn't worth it. */
@@ -18,6 +19,7 @@ class AppContainer(context: Context) {
     }
     val spotifyApi: SpotifyApi by lazy { SpotifyApiFactory.createApi(authManager) }
     val player: SpotifyPlayer by lazy { SpotifyPlayer(spotifyApi) }
+    val chorusFinder: ChorusFinder by lazy { ChorusFinder(spotifyApi, appContext) }
     val shuffleBagStore: ShuffleBagStore by lazy { ShuffleBagStore(appContext) }
 
     companion object {

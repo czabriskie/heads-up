@@ -29,6 +29,33 @@ class ShuffleBagTest {
     }
 
     @Test
+    fun `refill never starts with the track just drawn`() {
+        // Many seeds, small playlist: a naive reshuffle would repeat often.
+        repeat(500) { seed ->
+            val bag = ShuffleBag(listOf("a", "b", "c"), random = Random(seed))
+            repeat(2) { bag.draw() }
+            val lastOfCycle = bag.draw()!!
+            assertTrue(bag.draw()!! != lastOfCycle)
+        }
+    }
+
+    @Test
+    fun `refill after restart still avoids the last drawn track`() {
+        repeat(200) { seed ->
+            val first = ShuffleBag(listOf("a", "b", "c"), random = Random(seed))
+            repeat(3) { first.draw() }
+            val restored = ShuffleBag(
+                listOf("a", "b", "c"),
+                persistedRemaining = first.snapshotRemaining(),
+                persistedAll = first.snapshotAll(),
+                persistedLastDrawn = first.snapshotLastDrawn(),
+                random = Random(seed + 1000),
+            )
+            assertTrue(restored.draw()!! != first.snapshotLastDrawn())
+        }
+    }
+
+    @Test
     fun `empty playlist draws null`() {
         val bag = ShuffleBag(emptyList())
         assertNull(bag.draw())

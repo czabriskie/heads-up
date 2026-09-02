@@ -8,6 +8,8 @@ import com.headsup.game.game.ShuffleBag
 import com.headsup.game.game.ShuffleBagStore
 import com.headsup.game.model.Track
 import com.headsup.game.network.SpotifyApi
+import com.headsup.game.network.describeError
+import com.headsup.game.player.ChorusFinder
 import com.headsup.game.player.SpotifyPlayer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -34,6 +36,8 @@ sealed interface GameUiState {
         val totalTracks: Int,
         val remainingInBag: Int,
         val roundSeconds: Int,
+        val playSongs: Boolean,
+        val startAtChorus: Boolean,
     ) : GameUiState
 
     data class Countdown(val secondsLeft: Int) : GameUiState
@@ -56,6 +60,7 @@ class GameViewModel(
     private val api: SpotifyApi,
     private val player: SpotifyPlayer,
     private val bagStore: ShuffleBagStore,
+    private val chorusFinder: ChorusFinder,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<GameUiState>(GameUiState.Loading)
@@ -64,6 +69,9 @@ class GameViewModel(
     private var tracksById: Map<String, Track> = emptyMap()
     private var bag: ShuffleBag? = null
     private var roundSeconds = 60
+    /** Whether to play each song through Spotify; off = title-and-artist only. */
+    private var playSongs = true
+    private var startAtChorus = true
     private var timerJob: Job? = null
     private var flashJob: Job? = null
     private val results = mutableListOf<GuessResult>()
@@ -79,9 +87,8 @@ class GameViewModel(
                 val tracks = mutableListOf<Track>()
                 var offset = 0
                 while (true) {
-                    val page = api.getPlaylistTracks(playlistId, limit = 100, offset = offset)
-                    tracks += page.items.mapNotNull { it.track }
-                        .filter { it.id != null && !it.isLocal }
+                    val page = api.getPlaylistTracks(playlistId, limit = 50, offset = offset)
+                    tracks += page.items.mapNotNull { it.playableTrack }
                     if (page.next == null || page.items.isEmpty()) break
                     offset += page.items.size
                 }
@@ -95,6 +102,7 @@ class GameViewModel(
                     allTrackIds = tracks.map { it.id!! },
                     persistedRemaining = persisted?.remaining,
                     persistedAll = persisted?.all,
+                    persistedLastDrawn = persisted?.lastDrawn,
                 )
                 bag = newBag
                 bagStore.save(playlistId, newBag)
@@ -103,9 +111,12 @@ class GameViewModel(
                     totalTracks = newBag.totalCount,
                     remainingInBag = newBag.remainingCount,
                     roundSeconds = roundSeconds,
+                    playSongs = playSongs,
+                    startAtChorus = startAtChorus,
                 )
+                prefetchUpcoming()
             } catch (e: Exception) {
-                _state.value = GameUiState.Error("Couldn't load playlist: ${e.message}")
+                _state.value = GameUiState.Error("Couldn't load playlist: ${describeError(e)}")
             }
         }
     }
@@ -113,6 +124,26 @@ class GameViewModel(
     fun setRoundSeconds(seconds: Int) {
         roundSeconds = seconds
         _state.update { if (it is GameUiState.Ready) it.copy(roundSeconds = seconds) else it }
+    }
+
+    fun setPlaySongs(enabled: Boolean) {
+        playSongs = enabled
+        _state.update { if (it is GameUiState.Ready) it.copy(playSongs = enabled) else it }
+        if (enabled) prefetchUpcoming()
+    }
+
+    fun setStartAtChorus(enabled: Boolean) {
+        startAtChorus = enabled
+        _state.update { if (it is GameUiState.Ready) it.copy(startAtChorus = enabled) else it }
+        if (enabled) prefetchUpcoming()
+    }
+
+    /** Warms the chorus-position cache for the next track so playback starts instantly. */
+    private fun prefetchUpcoming() {
+        if (!playSongs || !startAtChorus) return
+        val upNextId = bag?.peek() ?: return
+        val upNext = tracksById[upNextId] ?: return
+        viewModelScope.launch { chorusFinder.prefetch(upNext) }
     }
 
     /** Puts every track back in the bag, starting a fresh no-repeat cycle. */
@@ -186,7 +217,10 @@ class GameViewModel(
             flash = previous?.flash,
         )
 
-        when (val result = player.play(track.uri)) {
+        if (!playSongs) return
+        val startMs = if (startAtChorus) chorusFinder.startPositionMs(track) else 0L
+        prefetchUpcoming()
+        when (val result = player.play(track.uri, positionMs = startMs)) {
             is SpotifyPlayer.PlayResult.Success -> Unit
             is SpotifyPlayer.PlayResult.NoDevice -> setPlaybackWarning(
                 "No Spotify device found — open Spotify, play any song for a second, then come back."
@@ -203,7 +237,7 @@ class GameViewModel(
 
     private fun finishGame() {
         timerJob?.cancel()
-        viewModelScope.launch { player.pause() }
+        if (playSongs) viewModelScope.launch { player.pause() }
         _state.value = GameUiState.Finished(results.toList())
     }
 
@@ -218,7 +252,10 @@ class GameViewModel(
             totalTracks = currentBag.totalCount,
             remainingInBag = currentBag.remainingCount,
             roundSeconds = roundSeconds,
+            playSongs = playSongs,
+            startAtChorus = startAtChorus,
         )
+        prefetchUpcoming()
     }
 
     override fun onCleared() {
@@ -238,6 +275,7 @@ class GameViewModel(
                 api = container.spotifyApi,
                 player = container.player,
                 bagStore = container.shuffleBagStore,
+                chorusFinder = container.chorusFinder,
             ) as T
     }
 }

@@ -22,6 +22,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.headsup.game.AppContainer
+import com.headsup.game.game.GestureSounds
 import com.headsup.game.game.TiltDetector
 
 private val CorrectGreen = Color(0xFF1DB954)
@@ -131,9 +133,37 @@ private fun ReadyContent(state: GameUiState.Ready, viewModel: GameViewModel, onE
                 )
             }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Switch(
+                checked = state.playSongs,
+                onCheckedChange = { viewModel.setPlaySongs(it) },
+            )
+            Text("Play songs through Spotify", style = MaterialTheme.typography.bodyLarge)
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Switch(
+                checked = state.startAtChorus,
+                enabled = state.playSongs,
+                onCheckedChange = { viewModel.setStartAtChorus(it) },
+            )
+            Text(
+                "Start songs at the chorus",
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (state.playSongs) Color.Unspecified else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.height(16.dp))
         Text(
-            "Make sure the Spotify app is open on this phone, then hold the phone " +
+            (if (state.playSongs) "Make sure the Spotify app is open on this phone, then hold the phone "
+            else "Songs won't play; your friends hum, sing, or describe them. Hold the phone ") +
                 "to your forehead, screen facing your friends.\n\n" +
                 "⬇️ Tilt down = correct   ⬆️ Tilt up = pass",
             style = MaterialTheme.typography.bodyMedium,
@@ -157,13 +187,23 @@ private fun PlayingContent(state: GameUiState.Playing, viewModel: GameViewModel)
     val currentViewModel by rememberUpdatedState(viewModel)
 
     DisposableEffect(Unit) {
+        val sounds = GestureSounds()
         val detector = TiltDetector(
             context = context,
-            onTiltDown = { currentViewModel.onCorrect() },
-            onTiltUp = { currentViewModel.onPass() },
+            onTiltDown = {
+                sounds.playCorrect()
+                currentViewModel.onCorrect()
+            },
+            onTiltUp = {
+                sounds.playPass()
+                currentViewModel.onPass()
+            },
         )
         detector.start()
-        onDispose { detector.stop() }
+        onDispose {
+            detector.stop()
+            sounds.release()
+        }
     }
 
     val background by animateColorAsState(
