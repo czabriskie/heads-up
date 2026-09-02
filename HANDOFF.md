@@ -18,7 +18,7 @@ Two signature features:
 |---|---|
 | Full app code (auth → playlists → game → results) | ✅ Written |
 | Compiles / debug APK assembles | ✅ Verified (Gradle 8.9, AGP 8.5.2, Kotlin 2.0.20, JDK 17+) |
-| Unit tests (`ShuffleBagTest`, `ChorusLocatorTest`, 14 tests) | ✅ Passing (`./gradlew :app:testDebugUnitTest`) |
+| Unit tests (shuffle bag, chorus locator, tilt filter, models, API errors; 32 tests) | ✅ Passing (`./gradlew :app:testDebugUnitTest`) |
 | Run on a real device | ✅ Galaxy S23 (SM-S911U): sign-in, playlist load, Spotify Connect playback, round loop all verified |
 | Spotify client ID | ✅ Configured locally in `local.properties` (never committed) |
 
@@ -36,7 +36,7 @@ Two signature features:
 - `auth/` — PKCE OAuth: `Pkce.kt` (verifier/challenge), `SpotifyAuthManager.kt` (authorize URL, code exchange, token refresh with mutex, error surface), `TokenStore.kt` (DataStore; also persists the in-flight verifier/state so process death during the browser round-trip doesn't break sign-in).
 - `network/` — Retrofit + kotlinx.serialization. `SpotifyApi.kt` (playlists, tracks, devices, play/pause, audio-analysis), `SpotifyApiFactory.kt` (OkHttp interceptor injects a valid token via `getValidAccessToken()`).
 - `model/Models.kt` — API DTOs.
-- `game/` — `ShuffleBag.kt` (pure no-repeat logic + playlist-diff merging; unit-tested), `ShuffleBagStore.kt` (persistence), `TiltDetector.kt` (gravity-sensor state machine; must pass through a neutral zone between gestures).
+- `game/` — `ShuffleBag.kt` (pure no-repeat logic + playlist-diff merging; unit-tested), `ShuffleBagStore.kt` (persistence), `TiltGestureFilter.kt` (pure gesture state machine; unit-tested) + `TiltDetector.kt` (sensor wrapper).
 - `player/` — `SpotifyPlayer.kt` (Spotify Connect play/pause; resolves a device on 404 and retries once; maps 403 → "needs Premium"), `ChorusLocator.kt` (pure chorus-picking logic; unit-tested), `ChorusFinder.kt` (analysis fetch + DataStore/memory cache + prefetch).
 - `ui/` — `HeadsUpApp.kt` (auth-gated NavHost), `LoginScreen`, `PlaylistScreen`/`PlaylistViewModel`, `GameScreen` (setup/countdown/playing/results phases, landscape lock + keep-screen-on during play), `GameViewModel` (round timer, scoring, bag draws, playback, chorus prefetch).
 
@@ -62,4 +62,4 @@ Two signature features:
 
 - Development happened on `claude/spotify-shuffle-game-kotlin-pv6a02`; it lands on `main` via PR.
 - `local.properties` is gitignored — the client ID never gets committed.
-- `README.md` covers player-facing setup; this file is the developer handoff.
+- `README.md` covers features, how to play, and Android Studio install; this file is the developer handoff.
