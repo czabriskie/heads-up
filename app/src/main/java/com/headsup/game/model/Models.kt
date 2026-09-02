@@ -82,6 +82,18 @@ data class DevicesResponse(
 )
 
 @Serializable
+data class AudioSection(
+    val start: Double = 0.0,
+    val duration: Double = 0.0,
+    val loudness: Double = 0.0,
+)
+
+@Serializable
+data class AudioAnalysis(
+    val sections: List<AudioSection> = emptyList(),
+)
+
+@Serializable
 data class PlayRequest(
     val uris: List<String>,
     @SerialName("position_ms") val positionMs: Long = 0,

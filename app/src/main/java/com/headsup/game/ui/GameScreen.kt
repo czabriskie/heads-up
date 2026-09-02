@@ -22,6 +22,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -131,7 +132,18 @@ private fun ReadyContent(state: GameUiState.Ready, viewModel: GameViewModel, onE
                 )
             }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Switch(
+                checked = state.startAtChorus,
+                onCheckedChange = { viewModel.setStartAtChorus(it) },
+            )
+            Text("Start songs at the chorus", style = MaterialTheme.typography.bodyLarge)
+        }
+        Spacer(Modifier.height(16.dp))
         Text(
             "Make sure the Spotify app is open on this phone, then hold the phone " +
                 "to your forehead, screen facing your friends.\n\n" +

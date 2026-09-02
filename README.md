@@ -11,6 +11,12 @@ A Heads Up–style party game for Android, written in Kotlin with Jetpack Compos
    **Tilt the phone up** (screen toward the ceiling) → pass, next song.
 5. When the round timer (60/90/120s) runs out you get a scoreboard of every song and how you did.
 
+### Songs start at the chorus
+
+By default each song starts at its most recognizable part instead of the intro (toggle on the round setup screen). The app asks Spotify's audio analysis for the song's sections and jumps to the loudest section in the 15–65% window of the track — which almost always lands on the first or second chorus. Positions are cached per track and prefetched for the upcoming song during play, so rounds never wait on the network.
+
+> **Note:** Spotify deprecated the audio-analysis endpoint for apps created after Nov 2024. If your app can't access it, the game falls back to starting 30% into the song (where a first chorus typically sits), never later than 30 seconds before the end. Songs of a minute or less play from the top.
+
 ### True no-repeat shuffle
 
 The playlist is shuffled into a "bag": every song is drawn exactly once, in random order, before any song can come up again. The bag is **persisted per playlist** — close the app, play tomorrow, and you still won't hear a repeat until the whole playlist has been used up, at which point it reshuffles automatically. Songs added to the playlist join the current cycle; removed songs are dropped. "Reset shuffle" on the game screen starts a fresh cycle on demand.

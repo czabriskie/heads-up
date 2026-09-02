@@ -52,6 +52,12 @@ class ShuffleBag(
         return remaining.removeFirst()
     }
 
+    /**
+     * The track the next [draw] will return, or null when the bag is empty
+     * (the refill shuffle hasn't happened yet, so the next track is unknown).
+     */
+    fun peek(): String? = remaining.firstOrNull()
+
     fun snapshotRemaining(): List<String> = remaining.toList()
     fun snapshotAll(): List<String> = all
 }

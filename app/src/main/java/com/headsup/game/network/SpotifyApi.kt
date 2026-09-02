@@ -1,5 +1,6 @@
 package com.headsup.game.network
 
+import com.headsup.game.model.AudioAnalysis
 import com.headsup.game.model.DevicesResponse
 import com.headsup.game.model.PlayRequest
 import com.headsup.game.model.PlaylistPage
@@ -54,6 +55,16 @@ interface SpotifyApi {
         @Query("fields") fields: String =
             "items(track(id,name,uri,is_local,duration_ms,artists(name))),next,total",
     ): TrackPage
+
+    /**
+     * Section-level audio analysis, used to locate the chorus. Deprecated by
+     * Spotify for apps created after Nov 2024 (returns 403) — callers must
+     * handle failure and fall back to a heuristic.
+     */
+    @GET("v1/audio-analysis/{id}")
+    suspend fun getAudioAnalysis(
+        @Path("id") trackId: String,
+    ): AudioAnalysis
 
     @GET("v1/me/player/devices")
     suspend fun getDevices(): DevicesResponse
