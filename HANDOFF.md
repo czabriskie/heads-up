@@ -1,6 +1,6 @@
 # Project Handoff — Heads Up: Music
 
-_Last updated: 2026-09-06 (landscape layout fix; not yet device-tested)_
+_Last updated: 2026-09-05 (v1.0.1: landscape layout fix, device-tested)_
 
 ## What this is
 
@@ -21,9 +21,9 @@ Two signature features:
 | Unit tests (shuffle bag, chorus locator, tilt filter, models, API errors; 32 tests) | ✅ Passing (`./gradlew :app:testDebugUnitTest`) |
 | Run on a real device | ✅ Galaxy S23 (SM-S911U): sign-in, playlist load, Spotify Connect playback, round loop all verified |
 | Spotify client ID | ✅ Configured locally in `local.properties` (never committed) |
-| Landscape setup/results layouts | ⚠️ Compiles and tests pass; never seen on a screen — see below |
+| Landscape setup/results layouts | ✅ Verified on the S23 (v1.0.1) — see below |
 
-## Open thread: landscape setup and results (branch `claude/landscape-mode-song-list-aja5q3`)
+## Landscape setup and results (fixed in v1.0.1)
 
 Reported from real play: after a round, the results screen showed no song list and the "Play again"
 button was unreachable until the phone was rotated to portrait.
@@ -43,16 +43,10 @@ instructions and Start button on setup. The shared pieces are factored into `Rea
 `ReadyOptions` / `ReadyInstructions` / `ReadyActions` and `ResultsHeader` / `ResultsList` /
 `ResultsActions` so both layouts stay in sync.
 
-Verified only by build: `:app:compileDebugKotlin`, `:app:testDebugUnitTest` (32 tests), and
-`:app:assembleDebug` all pass. That work happened in a cloud container with no device and no
-emulator, so **nobody has looked at these layouts**. Worth checking on the S23:
-
-1. Finish a round holding the phone sideways — the score and both buttons should sit to the left of
-   a scrollable song list, with nothing clipped.
-2. Scroll the song list in landscape when a round has more entries than fit.
-3. Tap "Play again" from there — the setup screen's two panes should both be fully reachable.
-4. Rotate to portrait on each screen; the old single-column layouts should be unchanged.
-5. Check with the system font size cranked up, which is what the new portrait scrolling is for.
+Verified on the Galaxy S23 on 2026-09-05: finishing a round sideways shows the score and both
+buttons beside the scrollable song list, "Play again" lands on a two-pane setup screen with
+everything reachable, and portrait keeps the single-column layouts. Unit tests (32) still pass.
+Released as v1.0.1 (`versionCode` 2).
 
 ## To get it running
 
@@ -85,16 +79,15 @@ emulator, so **nobody has looked at these layouts**. Worth checking on the S23:
 
 ## Sensible next steps
 
-1. Eyeball the landscape setup/results panes on a device (see the open thread above) — that branch is unmerged and unverified visually.
-2. More device time: tilt feel across several rounds, the no-device hint flow, and behaviour when Spotify is backgrounded.
-3. Tune tilt thresholds / flash duration (600ms) from real play.
-4. Maybe: team scores across rounds, haptics on gesture, countdown beeps, a sound on/off switch, a last-5-seconds tick, a "song was already guessed this round" guard if rounds outlast playlists.
-5. CI (GitHub Actions: `./gradlew testDebugUnitTest assembleDebug`) and a release signing config if this goes beyond personal use.
+1. More device time: tilt feel across several rounds, the no-device hint flow, and behaviour when Spotify is backgrounded.
+2. Tune tilt thresholds / flash duration (600ms) from real play.
+3. Maybe: team scores across rounds, haptics on gesture, countdown beeps, a sound on/off switch, a last-5-seconds tick, a "song was already guessed this round" guard if rounds outlast playlists.
+4. CI (GitHub Actions: `./gradlew testDebugUnitTest assembleDebug`) and a release signing config if this goes beyond personal use.
 
 ## Repo state
 
 - Development happened on `claude/spotify-shuffle-game-kotlin-pv6a02`; it lands on `main` via PR.
-- The landscape fix sits on `claude/landscape-mode-song-list-aja5q3` (no PR opened yet).
+- The landscape fix (`claude/landscape-mode-song-list-aja5q3`) was merged to `main` and released as v1.0.1. Releases are git tags `vX.Y.Z` on `main` with the debug APK attached on GitHub.
 - Building here needs the Android SDK (`compileSdk 35`); a cloud session has to install one itself (`sdkmanager "platforms;android-35" "build-tools;35.0.0"` into a scratch dir, then `ANDROID_HOME=...`). Locally, Android Studio's SDK or a `sdk.dir` in `local.properties` covers it.
 - `local.properties` is gitignored — the client ID never gets committed.
 - `README.md` covers features, how to play, and Android Studio install; this file is the developer handoff.
