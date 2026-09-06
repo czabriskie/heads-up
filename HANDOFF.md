@@ -1,6 +1,6 @@
 # Project Handoff — Heads Up: Music
 
-_Last updated: 2026-09-02 (device-tested)_
+_Last updated: 2026-09-05 (v1.0.1: landscape layout fix, device-tested)_
 
 ## What this is
 
@@ -21,6 +21,32 @@ Two signature features:
 | Unit tests (shuffle bag, chorus locator, tilt filter, models, API errors; 32 tests) | ✅ Passing (`./gradlew :app:testDebugUnitTest`) |
 | Run on a real device | ✅ Galaxy S23 (SM-S911U): sign-in, playlist load, Spotify Connect playback, round loop all verified |
 | Spotify client ID | ✅ Configured locally in `local.properties` (never committed) |
+| Landscape setup/results layouts | ✅ Verified on the S23 (v1.0.1) — see below |
+
+## Landscape setup and results (fixed in v1.0.1)
+
+Reported from real play: after a round, the results screen showed no song list and the "Play again"
+button was unreachable until the phone was rotated to portrait.
+
+Cause: a round locks the phone to `SCREEN_ORIENTATION_SENSOR_LANDSCAPE`, and the lock is released
+while the phone is still physically sideways, so the results screen renders in landscape.
+`ResultsContent` was a single `Column` — title, score, `LazyColumn(weight(1f))`, two buttons. The
+unweighted children alone are taller than a landscape phone, so the weighted list was measured at
+0dp and the buttons fell off the bottom. `ReadyContent` had the same shape and the same problem, hit
+right after tapping "Play again".
+
+Fix (commit `c4696e3`, `ui/GameScreen.kt`): both screens branch on
+`LocalConfiguration.current.orientation`. Portrait keeps the single column (setup now scrolls, so
+large font settings don't push the Start button off either); landscape splits into two panes —
+score and buttons beside the scrolling song list on results, round-length and toggles beside the
+instructions and Start button on setup. The shared pieces are factored into `ReadyHeader` /
+`ReadyOptions` / `ReadyInstructions` / `ReadyActions` and `ResultsHeader` / `ResultsList` /
+`ResultsActions` so both layouts stay in sync.
+
+Verified on the Galaxy S23 on 2026-09-05: finishing a round sideways shows the score and both
+buttons beside the scrollable song list, "Play again" lands on a two-pane setup screen with
+everything reachable, and portrait keeps the single-column layouts. Unit tests (32) still pass.
+Released as v1.0.1 (`versionCode` 2).
 
 ## To get it running
 
@@ -38,7 +64,7 @@ Two signature features:
 - `model/Models.kt` — API DTOs.
 - `game/` — `ShuffleBag.kt` (pure no-repeat logic + playlist-diff merging; unit-tested), `ShuffleBagStore.kt` (persistence), `TiltGestureFilter.kt` (pure gesture state machine; unit-tested) + `TiltDetector.kt` (sensor wrapper).
 - `player/` — `SpotifyPlayer.kt` (Spotify Connect play/pause; resolves a device on 404 and retries once; maps 403 → "needs Premium"), `ChorusLocator.kt` (pure chorus-picking logic; unit-tested), `ChorusFinder.kt` (analysis fetch + DataStore/memory cache + prefetch).
-- `ui/` — `HeadsUpApp.kt` (auth-gated NavHost), `LoginScreen`, `PlaylistScreen`/`PlaylistViewModel`, `GameScreen` (setup/countdown/playing/results phases, landscape lock + keep-screen-on during play), `GameViewModel` (round timer, scoring, bag draws, playback, chorus prefetch).
+- `ui/` — `HeadsUpApp.kt` (auth-gated NavHost), `LoginScreen`, `PlaylistScreen`/`PlaylistViewModel`, `GameScreen` (setup/countdown/playing/results phases, landscape lock + keep-screen-on during play; the setup and results screens have two-pane landscape layouts, since the phone is usually still sideways when a round ends), `GameViewModel` (round timer, scoring, bag draws, playback, chorus prefetch).
 
 ## Key decisions & constraints
 
@@ -61,5 +87,7 @@ Two signature features:
 ## Repo state
 
 - Development happened on `claude/spotify-shuffle-game-kotlin-pv6a02`; it lands on `main` via PR.
+- The landscape fix (`claude/landscape-mode-song-list-aja5q3`) was merged to `main` and released as v1.0.1. Releases are git tags `vX.Y.Z` on `main` with the debug APK attached on GitHub.
+- Building here needs the Android SDK (`compileSdk 35`); a cloud session has to install one itself (`sdkmanager "platforms;android-35" "build-tools;35.0.0"` into a scratch dir, then `ANDROID_HOME=...`). Locally, Android Studio's SDK or a `sdk.dir` in `local.properties` covers it.
 - `local.properties` is gitignored — the client ID never gets committed.
 - `README.md` covers features, how to play, and Android Studio install; this file is the developer handoff.
