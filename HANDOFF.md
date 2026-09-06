@@ -38,7 +38,7 @@ Two signature features:
 - `model/Models.kt` — API DTOs.
 - `game/` — `ShuffleBag.kt` (pure no-repeat logic + playlist-diff merging; unit-tested), `ShuffleBagStore.kt` (persistence), `TiltGestureFilter.kt` (pure gesture state machine; unit-tested) + `TiltDetector.kt` (sensor wrapper).
 - `player/` — `SpotifyPlayer.kt` (Spotify Connect play/pause; resolves a device on 404 and retries once; maps 403 → "needs Premium"), `ChorusLocator.kt` (pure chorus-picking logic; unit-tested), `ChorusFinder.kt` (analysis fetch + DataStore/memory cache + prefetch).
-- `ui/` — `HeadsUpApp.kt` (auth-gated NavHost), `LoginScreen`, `PlaylistScreen`/`PlaylistViewModel`, `GameScreen` (setup/countdown/playing/results phases, landscape lock + keep-screen-on during play), `GameViewModel` (round timer, scoring, bag draws, playback, chorus prefetch).
+- `ui/` — `HeadsUpApp.kt` (auth-gated NavHost), `LoginScreen`, `PlaylistScreen`/`PlaylistViewModel`, `GameScreen` (setup/countdown/playing/results phases, landscape lock + keep-screen-on during play; the setup and results screens have two-pane landscape layouts, since the phone is usually still sideways when a round ends), `GameViewModel` (round timer, scoring, bag draws, playback, chorus prefetch).
 
 ## Key decisions & constraints
 

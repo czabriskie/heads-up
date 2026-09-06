@@ -2,14 +2,18 @@ package com.headsup.game.ui
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.view.WindowManager
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,6 +42,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -128,76 +133,123 @@ private fun GameModeEffects() {
 
 @Composable
 private fun ReadyContent(state: GameUiState.Ready, viewModel: GameViewModel, onExit: () -> Unit) {
-    Column(
-        Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(state.playlistName, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "${state.remainingInBag} of ${state.totalTracks} songs left before the shuffle starts over",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(24.dp))
-        Text("Round length", style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(60, 90, 120).forEach { seconds ->
-                FilterChip(
-                    selected = state.roundSeconds == seconds,
-                    onClick = { viewModel.setRoundSeconds(seconds) },
-                    label = { Text("${seconds}s") },
-                )
+    if (isLandscape()) {
+        // Landscape has too little height for one column: split the setup across two panes.
+        Row(
+            Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            Column(
+                Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                ReadyHeader(state)
+                Spacer(Modifier.height(16.dp))
+                ReadyOptions(state, viewModel)
+            }
+            Column(
+                Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                ReadyInstructions(state)
+                Spacer(Modifier.height(16.dp))
+                ReadyActions(viewModel, onExit)
             }
         }
-        Spacer(Modifier.height(16.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+    } else {
+        Column(
+            Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Switch(
-                checked = state.playSongs,
-                onCheckedChange = { viewModel.setPlaySongs(it) },
-            )
-            Text("Play songs through Spotify", style = MaterialTheme.typography.bodyLarge)
+            ReadyHeader(state)
+            Spacer(Modifier.height(24.dp))
+            ReadyOptions(state, viewModel)
+            Spacer(Modifier.height(16.dp))
+            ReadyInstructions(state)
+            Spacer(Modifier.height(32.dp))
+            ReadyActions(viewModel, onExit)
         }
-        Spacer(Modifier.height(8.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Switch(
-                checked = state.startAtChorus,
-                enabled = state.playSongs,
-                onCheckedChange = { viewModel.setStartAtChorus(it) },
-            )
-            Text(
-                "Start songs at the chorus",
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (state.playSongs) Color.Unspecified else MaterialTheme.colorScheme.onSurfaceVariant,
+    }
+}
+
+@Composable
+private fun ReadyHeader(state: GameUiState.Ready) {
+    Text(state.playlistName, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
+    Spacer(Modifier.height(8.dp))
+    Text(
+        "${state.remainingInBag} of ${state.totalTracks} songs left before the shuffle starts over",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+    )
+}
+
+@Composable
+private fun ReadyOptions(state: GameUiState.Ready, viewModel: GameViewModel) {
+    Text("Round length", style = MaterialTheme.typography.titleMedium)
+    Spacer(Modifier.height(8.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(60, 90, 120).forEach { seconds ->
+            FilterChip(
+                selected = state.roundSeconds == seconds,
+                onClick = { viewModel.setRoundSeconds(seconds) },
+                label = { Text("${seconds}s") },
             )
         }
-        Spacer(Modifier.height(16.dp))
-        Text(
-            (if (state.playSongs) "Make sure the Spotify app is open on this phone, then hold the phone "
-            else "Songs won't play; your friends hum, sing, or describe them. Hold the phone ") +
-                "to your forehead, screen facing your friends.\n\n" +
-                "⬇️ Tilt down = correct   ⬆️ Tilt up = pass",
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
+    }
+    Spacer(Modifier.height(16.dp))
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Switch(
+            checked = state.playSongs,
+            onCheckedChange = { viewModel.setPlaySongs(it) },
         )
-        Spacer(Modifier.height(32.dp))
-        Button(onClick = { viewModel.startGame() }, modifier = Modifier.fillMaxWidth()) {
-            Text("Start round", fontSize = 20.sp, modifier = Modifier.padding(8.dp))
-        }
-        Spacer(Modifier.height(8.dp))
-        Row {
-            TextButton(onClick = { viewModel.resetBag() }) { Text("Reset shuffle") }
-            TextButton(onClick = onExit) { Text("Back to playlists") }
-        }
+        Text("Play songs through Spotify", style = MaterialTheme.typography.bodyLarge)
+    }
+    Spacer(Modifier.height(8.dp))
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Switch(
+            checked = state.startAtChorus,
+            enabled = state.playSongs,
+            onCheckedChange = { viewModel.setStartAtChorus(it) },
+        )
+        Text(
+            "Start songs at the chorus",
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (state.playSongs) Color.Unspecified else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun ReadyInstructions(state: GameUiState.Ready) {
+    Text(
+        (if (state.playSongs) "Make sure the Spotify app is open on this phone, then hold the phone "
+        else "Songs won't play; your friends hum, sing, or describe them. Hold the phone ") +
+            "to your forehead, screen facing your friends.\n\n" +
+            "⬇️ Tilt down = correct   ⬆️ Tilt up = pass",
+        style = MaterialTheme.typography.bodyMedium,
+        textAlign = TextAlign.Center,
+    )
+}
+
+@Composable
+private fun ReadyActions(viewModel: GameViewModel, onExit: () -> Unit) {
+    Button(onClick = { viewModel.startGame() }, modifier = Modifier.fillMaxWidth()) {
+        Text("Start round", fontSize = 20.sp, modifier = Modifier.padding(8.dp))
+    }
+    Spacer(Modifier.height(8.dp))
+    Row {
+        TextButton(onClick = { viewModel.resetBag() }) { Text("Reset shuffle") }
+        TextButton(onClick = onExit) { Text("Back to playlists") }
     }
 }
 
@@ -286,43 +338,81 @@ private fun PlayingContent(state: GameUiState.Playing, viewModel: GameViewModel,
 
 @Composable
 private fun ResultsContent(state: GameUiState.Finished, viewModel: GameViewModel, onExit: () -> Unit) {
-    val correct = state.results.count { it.correct }
-    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp)) {
-        Text("Time's up! 🎉", style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "$correct correct out of ${state.results.size}",
-            style = MaterialTheme.typography.titleLarge,
-            color = CorrectGreen,
-        )
-        Spacer(Modifier.height(16.dp))
-        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(state.results) { result ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        if (result.correct) "✓" else "✗",
-                        fontSize = 22.sp,
-                        color = if (result.correct) CorrectGreen else PassOrange,
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text(result.trackName, style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            result.artistNames,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
+    if (isLandscape()) {
+        // The phone is still sideways from the round: put the score and buttons beside the
+        // list instead of stacking them, so nothing gets squeezed off the short screen.
+        Row(
+            Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            Column(
+                Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                ResultsHeader(state)
+                Spacer(Modifier.height(16.dp))
+                ResultsActions(viewModel, onExit)
             }
+            ResultsList(state, Modifier.weight(1f).fillMaxHeight())
         }
-        Spacer(Modifier.height(16.dp))
-        Button(onClick = { viewModel.backToReady() }, modifier = Modifier.fillMaxWidth()) {
-            Text("Play again")
-        }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = onExit, modifier = Modifier.fillMaxWidth()) {
-            Text("Choose another playlist")
+    } else {
+        Column(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp)) {
+            ResultsHeader(state)
+            Spacer(Modifier.height(16.dp))
+            ResultsList(state, Modifier.weight(1f).fillMaxWidth())
+            Spacer(Modifier.height(16.dp))
+            ResultsActions(viewModel, onExit)
         }
     }
 }
+
+@Composable
+private fun ResultsHeader(state: GameUiState.Finished) {
+    val correct = state.results.count { it.correct }
+    Text("Time's up! 🎉", style = MaterialTheme.typography.headlineMedium)
+    Spacer(Modifier.height(4.dp))
+    Text(
+        "$correct correct out of ${state.results.size}",
+        style = MaterialTheme.typography.titleLarge,
+        color = CorrectGreen,
+    )
+}
+
+@Composable
+private fun ResultsList(state: GameUiState.Finished, modifier: Modifier = Modifier) {
+    LazyColumn(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(state.results) { result ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (result.correct) "✓" else "✗",
+                    fontSize = 22.sp,
+                    color = if (result.correct) CorrectGreen else PassOrange,
+                )
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(result.trackName, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        result.artistNames,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResultsActions(viewModel: GameViewModel, onExit: () -> Unit) {
+    Button(onClick = { viewModel.backToReady() }, modifier = Modifier.fillMaxWidth()) {
+        Text("Play again")
+    }
+    Spacer(Modifier.height(8.dp))
+    OutlinedButton(onClick = onExit, modifier = Modifier.fillMaxWidth()) {
+        Text("Choose another playlist")
+    }
+}
+
+@Composable
+private fun isLandscape(): Boolean =
+    LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
