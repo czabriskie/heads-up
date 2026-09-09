@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.headsup.game.AppContainer
+import com.headsup.game.game.GuessResult
+import com.headsup.game.game.RoundLog
 import com.headsup.game.game.ShuffleBag
 import com.headsup.game.game.ShuffleBagStore
 import com.headsup.game.model.Track
@@ -17,12 +19,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-data class GuessResult(
-    val trackName: String,
-    val artistNames: String,
-    val correct: Boolean,
-)
 
 enum class Flash { CORRECT, PASS }
 
@@ -74,7 +70,10 @@ class GameViewModel(
     private var startAtChorus = true
     private var timerJob: Job? = null
     private var flashJob: Job? = null
-    private val results = mutableListOf<GuessResult>()
+    private val log = RoundLog()
+
+    /** False once the round is over, so a draw still in flight can't restart it. */
+    private var roundInProgress = false
 
     init {
         loadPlaylist()
@@ -156,12 +155,13 @@ class GameViewModel(
 
     fun startGame() {
         if (_state.value !is GameUiState.Ready) return
-        results.clear()
+        log.start()
         viewModelScope.launch {
             for (n in 3 downTo 1) {
                 _state.value = GameUiState.Countdown(n)
                 delay(1000)
             }
+            roundInProgress = true
             nextTrack(initial = true)
             startTimer()
         }
@@ -188,10 +188,11 @@ class GameViewModel(
 
     private fun recordAndAdvance(correct: Boolean) {
         val current = _state.value as? GameUiState.Playing ?: return
-        results += GuessResult(current.track.name, current.track.artistNames, correct)
+        // A second gesture before the next song is drawn has nothing left to score.
+        if (!log.score(correct)) return
         _state.value = current.copy(
-            correctCount = current.correctCount + if (correct) 1 else 0,
-            passCount = current.passCount + if (correct) 0 else 1,
+            correctCount = log.correctCount,
+            passCount = log.passCount,
             flash = if (correct) Flash.CORRECT else Flash.PASS,
         )
         flashJob?.cancel()
@@ -204,20 +205,24 @@ class GameViewModel(
 
     private suspend fun nextTrack(initial: Boolean) {
         val currentBag = bag ?: return
+        if (!roundInProgress) return
         val trackId = currentBag.draw() ?: return
-        bagStore.save(playlistId, currentBag)
         val track = tracksById[trackId] ?: return
 
         val previous = _state.value as? GameUiState.Playing
+        log.show(track)
         _state.value = GameUiState.Playing(
             track = track,
             secondsLeft = if (initial) roundSeconds else previous?.secondsLeft ?: roundSeconds,
-            correctCount = previous?.correctCount ?: 0,
-            passCount = previous?.passCount ?: 0,
+            correctCount = log.correctCount,
+            passCount = log.passCount,
             flash = previous?.flash,
         )
+        // Persisted after the draw is on screen and logged, so a round that ends
+        // mid-write still lists the song the room just saw.
+        bagStore.save(playlistId, currentBag)
 
-        if (!playSongs) return
+        if (!roundInProgress || !playSongs) return
         val startMs = if (startAtChorus) chorusFinder.startPositionMs(track) else 0L
         prefetchUpcoming()
         when (val result = player.play(track.uri, positionMs = startMs)) {
@@ -236,9 +241,14 @@ class GameViewModel(
     }
 
     private fun finishGame() {
+        roundInProgress = false
         timerJob?.cancel()
+        flashJob?.cancel()
+        // The song on screen when the buzzer goes was still shown to the room, and
+        // the bag won't deal it again this cycle, so it belongs on the results list.
+        log.finish()
         if (playSongs) viewModelScope.launch { player.pause() }
-        _state.value = GameUiState.Finished(results.toList())
+        _state.value = GameUiState.Finished(log.results)
     }
 
     fun endGameEarly() {
