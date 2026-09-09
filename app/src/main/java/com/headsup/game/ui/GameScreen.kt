@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.headsup.game.AppContainer
 import com.headsup.game.game.GameSounds
+import com.headsup.game.game.GuessOutcome
 import com.headsup.game.game.TiltDetector
 
 private val CorrectGreen = Color(0xFF1DB954)
@@ -368,11 +369,13 @@ private fun ResultsContent(state: GameUiState.Finished, viewModel: GameViewModel
 
 @Composable
 private fun ResultsHeader(state: GameUiState.Finished) {
-    val correct = state.results.count { it.correct }
+    val correct = state.results.count { it.outcome == GuessOutcome.CORRECT }
+    // The song the round ended on never got an answer, so it isn't part of the score.
+    val answered = state.results.count { it.outcome != GuessOutcome.UNANSWERED }
     Text("Time's up! 🎉", style = MaterialTheme.typography.headlineMedium)
     Spacer(Modifier.height(4.dp))
     Text(
-        "$correct correct out of ${state.results.size}",
+        "$correct correct out of $answered",
         style = MaterialTheme.typography.titleLarge,
         color = CorrectGreen,
     )
@@ -382,17 +385,33 @@ private fun ResultsHeader(state: GameUiState.Finished) {
 private fun ResultsList(state: GameUiState.Finished, modifier: Modifier = Modifier) {
     LazyColumn(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items(state.results) { result ->
+            val marker: String
+            val markerColor: Color
+            when (result.outcome) {
+                GuessOutcome.CORRECT -> {
+                    marker = "✓"
+                    markerColor = CorrectGreen
+                }
+                GuessOutcome.PASS -> {
+                    marker = "✗"
+                    markerColor = PassOrange
+                }
+                GuessOutcome.UNANSWERED -> {
+                    marker = "–"
+                    markerColor = MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    if (result.correct) "✓" else "✗",
-                    fontSize = 22.sp,
-                    color = if (result.correct) CorrectGreen else PassOrange,
-                )
+                Text(marker, fontSize = 22.sp, color = markerColor)
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text(result.trackName, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        result.artistNames,
+                        if (result.outcome == GuessOutcome.UNANSWERED) {
+                            "${result.artistNames} · unanswered"
+                        } else {
+                            result.artistNames
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

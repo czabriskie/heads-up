@@ -1,6 +1,6 @@
 # Project Handoff — Heads Up: Music
 
-_Last updated: 2026-09-05 (v1.0.1: landscape layout fix, device-tested)_
+_Last updated: 2026-09-09 (last song now reaches the results list; needs a device round)_
 
 ## What this is
 
@@ -18,10 +18,11 @@ Two signature features:
 |---|---|
 | Full app code (auth → playlists → game → results) | ✅ Written |
 | Compiles / debug APK assembles | ✅ Verified (Gradle 8.9, AGP 8.5.2, Kotlin 2.0.20, JDK 17+) |
-| Unit tests (shuffle bag, chorus locator, tilt filter, models, API errors; 32 tests) | ✅ Passing (`./gradlew :app:testDebugUnitTest`) |
+| Unit tests (shuffle bag, round log, chorus locator, tilt filter, models, API errors; 39 tests) | ✅ Passing (`./gradlew :app:testDebugUnitTest`) |
 | Run on a real device | ✅ Galaxy S23 (SM-S911U): sign-in, playlist load, Spotify Connect playback, round loop all verified |
 | Spotify client ID | ✅ Configured locally in `local.properties` (never committed) |
 | Landscape setup/results layouts | ✅ Verified on the S23 (v1.0.1) — see below |
+| Last song of a round appears in the results list | ✅ Fixed + unit-tested, ⏳ not yet played on a device |
 
 ## Landscape setup and results (fixed in v1.0.1)
 
@@ -48,6 +49,31 @@ buttons beside the scrollable song list, "Play again" lands on a two-pane setup 
 everything reachable, and portrait keeps the single-column layouts. Unit tests (32) still pass.
 Released as v1.0.1 (`versionCode` 2).
 
+## The song the round ends on (fixed 2026-09-09)
+
+Reported from real play: a song was shown during the round but was missing from the results list.
+
+Cause: a song was only logged when a tilt scored it. The card on screen when the timer ran out (or
+when "End" was tapped) had already been drawn from the shuffle bag and read out to the room, but
+nobody tilted on it, so it was never added to `results` — drawn, shown, consumed, and then gone.
+Two smaller variants of the same bug rode along: a second tilt landing before the next draw finished
+persisting logged the same song twice, and a draw whose `bagStore.save` was still in flight when the
+round ended overwrote the results screen with a fresh `Playing` state.
+
+Fix (`game/RoundLog.kt`, `ui/GameViewModel.kt`, `ui/GameScreen.kt`): the round's bookkeeping moved
+into `RoundLog`, a pure class that holds the song on screen "in hand" until something resolves it.
+A tilt scores it (and a second tilt with nothing in hand is ignored); ending the round logs it as
+`GuessOutcome.UNANSWERED`. The view model now sets the `Playing` state before persisting the bag and
+guards the post-save work with a `roundInProgress` flag, so a draw in flight can't restart a finished
+round. Results show unanswered songs with a muted "–" and an "· unanswered" note, and they're left
+out of the score denominator ("N correct out of *answered*") since nobody got a chance at them.
+
+The song stays consumed from the shuffle bag on purpose: the room already saw its title, so dealing
+it again next round would be a spoiled card.
+
+Covered by `RoundLogTest` (7 tests). Not yet played through on a phone — worth one round to confirm
+the buzzer song shows up and the score line reads sensibly.
+
 ## To get it running
 
 1. Create an app at the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard); set Redirect URI to exactly `headsup://callback`; select Web API.
@@ -62,7 +88,7 @@ Released as v1.0.1 (`versionCode` 2).
 - `auth/` — PKCE OAuth: `Pkce.kt` (verifier/challenge), `SpotifyAuthManager.kt` (authorize URL, code exchange, token refresh with mutex, error surface), `TokenStore.kt` (DataStore; also persists the in-flight verifier/state so process death during the browser round-trip doesn't break sign-in).
 - `network/` — Retrofit + kotlinx.serialization. `SpotifyApi.kt` (playlists, tracks, devices, play/pause, audio-analysis), `SpotifyApiFactory.kt` (OkHttp interceptor injects a valid token via `getValidAccessToken()`).
 - `model/Models.kt` — API DTOs.
-- `game/` — `ShuffleBag.kt` (pure no-repeat logic + playlist-diff merging; unit-tested), `ShuffleBagStore.kt` (persistence), `TiltGestureFilter.kt` (pure gesture state machine; unit-tested) + `TiltDetector.kt` (sensor wrapper).
+- `game/` — `ShuffleBag.kt` (pure no-repeat logic + playlist-diff merging; unit-tested), `ShuffleBagStore.kt` (persistence), `RoundLog.kt` (pure per-round scoring/song list, including the song a round ends on; unit-tested), `TiltGestureFilter.kt` (pure gesture state machine; unit-tested) + `TiltDetector.kt` (sensor wrapper).
 - `player/` — `SpotifyPlayer.kt` (Spotify Connect play/pause; resolves a device on 404 and retries once; maps 403 → "needs Premium"), `ChorusLocator.kt` (pure chorus-picking logic; unit-tested), `ChorusFinder.kt` (analysis fetch + DataStore/memory cache + prefetch).
 - `ui/` — `HeadsUpApp.kt` (auth-gated NavHost), `LoginScreen`, `PlaylistScreen`/`PlaylistViewModel`, `GameScreen` (setup/countdown/playing/results phases, landscape lock + keep-screen-on during play; the setup and results screens have two-pane landscape layouts, since the phone is usually still sideways when a round ends), `GameViewModel` (round timer, scoring, bag draws, playback, chorus prefetch).
 
